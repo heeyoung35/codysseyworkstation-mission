@@ -1,6 +1,1 @@
-```bash
-$ git config --list
-...
-user.name=heeyoung35
-user.email=kheeyoung35@gmail.com
-...
+#codysseyworkstation-mission
