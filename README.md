@@ -42,6 +42,7 @@ branch.main.remote=origin
 branch.main.merge=refs/heads/main
 user.name=heeyoung35
 user.email=kheeyoung35@gmail.com
+```
 
 ### 4.2 터미널 조작 및 권한 실습 (로컬 환경)
 터미널을 이용한 디렉토리 제어 및 파일 생성 로그입니다. 윈도우 환경의 특성상 `chmod` 명령어가 기호로 출력되지 않는 현상을 확인하였습니다.
@@ -57,32 +58,36 @@ $touch test.txt$ ls -l test.txt
 
 $chmod 755 test.txt$ ls -l test.txt
 -rw-r--r-- 1 gram 197121 0 Mar 31 17:28 test.txt  # 윈도우 환경상 변화 없음
+```
 
-4.3 Docker 설치 및 기본 환경 점검
-Docker 엔진의 정상 작동 여부를 docker info와 hello-world 실행으로 검증하였습니다.
+### 4.3 Docker 설치 및 기본 환경 점검
+Docker 엔진의 정상 작동 여부를 `docker info`와 `hello-world` 실행으로 검증하였습니다.
 
-Docker 주요 정보:
+**Docker 주요 정보:**
+* **Server Version:** 28.1.1
+* **Operating System:** Docker Desktop
+* **Kernel Version:** 6.6.87.1-microsoft-standard-WSL2
 
-Server Version: 28.1.1
-
-Operating System: Docker Desktop
-
-Kernel Version: 6.6.87.1-microsoft-standard-WSL2
-
+```bash
 $ docker run hello-world
 Hello from Docker!
 This message shows that your installation appears to be working correctly.
+```
 
-4.4 Docker 컨테이너 내 권한 실습
-로컬에서 확인이 불가능했던 chmod 동작을 Ubuntu 컨테이너 내부(Linux 환경)에서 성공적으로 재검증하였습니다.
+### 4.4 Docker 컨테이너 내 권한 실습
+로컬(Windows) 환경에서 확인이 불가능했던 `chmod` 동작을 Ubuntu 컨테이너 내부(Linux 환경)에서 성공적으로 재검증하였습니다.
 
+
+```bash
+# Ubuntu 컨테이너 실행 및 권한 변경 테스트
 $ docker run -it ubuntu
 root@2f9e1e7f2886:/# touch docker_test.txt
 root@2f9e1e7f2886:/# chmod 755 docker_test.txt
 root@2f9e1e7f2886:/# ls -l docker_test.txt
 -rwxr-xr-x 1 root root 0 Mar 31 09:43 docker_test.txt # 실행 권한(x) 확인
+```
 
-5. 트러블슈팅
+## 5. 트러블슈팅
 Case 1: Git 설정 시 'safe.directory' 에러
 문제: 저장소 경로를 Git이 신뢰하지 않아 명령어가 거부됨.
 
