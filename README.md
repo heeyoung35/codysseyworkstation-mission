@@ -94,12 +94,14 @@ root@2f9e1e7f2886:/# ls -l docker_test.txt
 ### 4.5 커스텀 Dockerfile 빌드 및 실행
 사용자 정의 HTML 파일을 포함하는 커스텀 이미지를 빌드하고, 포트 매핑(8080:80)을 통해 호스트 브라우저에서 접속을 확인하였습니다.
 
-# Dockerfile
-```Dockerfile
+```markdown
+#### Dockerfile
+```dockerfile
 FROM nginx:alpine
 COPY index.html /usr/share/nginx/html/index.html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
+
 
 # 1. 빌드 명령어
 $ docker build -t my-nginx:1.0 .
@@ -112,7 +114,6 @@ $ curl http://localhost:8080
 
 # 4. 접속 증명
 ![웹 서버 성공 화면](./images/web-server-success.png)
-
 ```
 
 ## 5. 트러블슈팅
