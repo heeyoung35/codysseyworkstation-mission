@@ -112,7 +112,7 @@ $ docker run -d -p 8080:80 my-nginx:1.0
 $ curl http://localhost:8080
 
 # 4. 접속 증명
-$ ./images/web-server-success.png
+![웹 서버 성공 화면](./images/web-server-success.png)
 
 ```
 
