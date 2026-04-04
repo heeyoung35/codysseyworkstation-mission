@@ -51,9 +51,13 @@ user.email=kheeyoung35@gmail.com
 $ pwd
 /d/codyssey/codysseyworkstation-mission
 
-$ mkdir mission_logs$ cd mission_logs
+$ mkdir mission_logs
 
-$ touch test.txt$ ls -l test.txt
+$ cd mission_logs
+
+$ touch test.txt
+
+$ ls -l test.txt
 -rw-r--r-- 1 gram 197121 0 Mar 31 17:28 test.txt
 
 $ chmod 755 test.txt$ ls -l test.txt
@@ -90,12 +94,12 @@ root@2f9e1e7f2886:/# ls -l docker_test.txt
 ### 4.5 커스텀 Dockerfile 빌드 및 실행
 사용자 정의 HTML 파일을 포함하는 커스텀 이미지를 빌드하고, 포트 매핑(8080:80)을 통해 호스트 브라우저에서 접속을 확인하였습니다.
 
-```Dcokerfile
+# Dockerfile
 FROM nginx:alpine
 COPY index.html /usr/share/nginx/html/index.html
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
-```
+
 
 ```bash
 # 1. 빌드 명령어
@@ -109,24 +113,25 @@ $ curl http://localhost:8080
 
 # 4. 접속 증명
 $ ./images/web-server-success.png
+
 ```
 
 ## 5. 트러블슈팅
-Case 1: Git 설정 시 'safe.directory' 에러
+### Case 1: Git 설정 시 'safe.directory' 에러
 문제: 저장소 경로를 Git이 신뢰하지 않아 명령어가 거부됨.
 
 원인: Git 보안 정책 강화로 인한 미등록 경로 차단.
 
 해결: git config --global --add safe.directory 명령으로 경로 등록.
 
-Case 2: 로컬 환경(Windows)에서의 chmod 미적용
+### Case 2: 로컬 환경(Windows)에서의 chmod 미적용
 문제: chmod 실행 후에도 ls -l 기호가 변하지 않음.
 
 원인: Windows NTFS 파일 시스템과 POSIX 권한 체계의 불일치.
 
 해결: Docker 리눅스 컨테이너 환경을 활용하여 명령의 정상 동작을 교차 검증함.
 
-Case 3: Git Pull 시 머지 충돌(Merge Conflict)
+### Case 3: Git Pull 시 머지 충돌(Merge Conflict)
 문제: 원격과 로컬의 파일 내용이 달라 Automatic merge failed 발생.
 
 원인: GitHub 초기 생성 파일과 로컬 신규 파일 간의 충돌.
