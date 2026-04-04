@@ -51,12 +51,12 @@ user.email=kheeyoung35@gmail.com
 $ pwd
 /d/codyssey/codysseyworkstation-mission
 
-$mkdir mission_logs$ cd mission_logs
+$ mkdir mission_logs$ cd mission_logs
 
-$touch test.txt$ ls -l test.txt
+$ touch test.txt$ ls -l test.txt
 -rw-r--r-- 1 gram 197121 0 Mar 31 17:28 test.txt
 
-$chmod 755 test.txt$ ls -l test.txt
+$ chmod 755 test.txt$ ls -l test.txt
 -rw-r--r-- 1 gram 197121 0 Mar 31 17:28 test.txt  # 윈도우 환경상 변화 없음
 ```
 
@@ -85,6 +85,27 @@ root@2f9e1e7f2886:/# touch docker_test.txt
 root@2f9e1e7f2886:/# chmod 755 docker_test.txt
 root@2f9e1e7f2886:/# ls -l docker_test.txt
 -rwxr-xr-x 1 root root 0 Mar 31 09:43 docker_test.txt # 실행 권한(x) 확인
+```
+
+### 4.5 커스텀 Dockerfile 빌드 및 실행
+사용자 정의 HTML 파일을 포함하는 커스텀 이미지를 빌드하고, 포트 매핑(8080:80)을 통해 호스트 브라우저에서 접속을 확인하였습니다.
+
+```Dcokerfile
+FROM nginx:alpine
+COPY index.html /usr/share/nginx/html/index.html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+```bash
+# 1. 빌드 명령어
+$ docker build -t my-nginx:1.0 .
+
+# 2. 실행 명령어
+$ docker run -d -p 8080:80 my-nginx:1.0
+
+# 3. 접속 확인
+$ curl http://localhost:8080
 ```
 
 ## 5. 트러블슈팅
