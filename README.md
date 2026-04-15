@@ -158,3 +158,34 @@ $ curl http://localhost:8080
 
 해결: git merge --abort 후 수동 병합(Conflict 해결) 수행.
 
+### Case 4: Git Bash MSYS 경로 자동변환으로 인한 바인드 마운트 실패
+
+**문제:** Git Bash에서 `-v` 옵션으로 바인드 마운트를 설정했으나, 브라우저에서 nginx 기본 페이지(Welcome to nginx!)가 그대로 출력됨.
+
+**원인:** Git Bash(MSYS2 환경)는 `/usr/share/nginx/html` 같은 경로를 자동으로 Windows 경로로 변환함.
+`/usr` → `C:\Program Files\Git\usr` 로 변환되어 Docker에 엉뚱한 경로가 전달됨.
+
+`docker inspect`로 확인한 실제 마운트 결과:
+```bash
+$ docker inspect bind-test --format='{{json .Mounts}}'
+[{
+  "Source": "C:\\Users\\gram\\codyssey\\bind-test;C",
+  "Destination": "\\Program Files\\Git\\usr\\share\\nginx\\html"
+}]
+# → Destination이 컨테이너 내부 경로가 아닌 Git 설치 경로로 잘못 변환됨
+```
+
+**해결:** `MSYS_NO_PATHCONV=1` 환경변수를 앞에 붙여 경로 자동변환을 비활성화한 후 실행.
+
+```bash
+docker rm -f bind-test
+
+MSYS_NO_PATHCONV=1 docker run -d -p 8081:80 --name bind-test \
+  -v /c/Users/gram/codyssey/bind-test:/usr/share/nginx/html \
+  nginx:alpine
+
+# 내부 파일 확인으로 마운트 성공 검증
+MSYS_NO_PATHCONV=1 docker exec -it bind-test ls /usr/share/nginx/html
+# → index.html 출력 확인 (바인드 마운트 정상 동작)
+```
+
