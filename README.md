@@ -44,6 +44,9 @@ user.name=heeyoung35
 user.email=kheeyoung35@gmail.com
 ```
 
+**GitHub 원격 저장소 연동 및 최신 커밋 확인:**
+![GitHub 연동 확인](images/17_git_github_sync_check.png)
+
 ### 4.2 터미널 조작 및 권한 실습 (로컬 환경)
 터미널을 이용한 디렉토리 제어 및 파일 생성 로그입니다. 윈도우 환경의 특성상 `chmod` 명령어가 기호로 출력되지 않는 현상을 확인하였습니다.
 
@@ -93,6 +96,21 @@ This message shows that your installation appears to be working correctly.
 **hello-world 실행 전체 로그:**
 ![hello-world 실행 성공](images/03_docker_hello_world.png)
 
+### 4.3-1 Docker 운영 명령 실행 기록
+Docker 엔진 상태를 점검하는 주요 운영 명령어를 실행하고 결과를 기록하였습니다.
+
+**docker images (로컬 이미지 목록):**
+![docker images 출력](images/07_docker_images.png)
+
+**docker ps -a (전체 컨테이너 목록):**
+![docker ps -a 출력](images/08_docker_ps_a.png)
+
+**docker logs (컨테이너 실행 로그):**
+![docker logs 출력](images/09_docker_logs.png)
+
+**docker stats --no-stream (리소스 사용량):**
+![docker stats 출력](images/10_docker_stats.png)
+
 ### 4.4 Docker 컨테이너 내 권한 실습
 로컬(Windows) 환경에서 확인이 불가능했던 `chmod` 동작을 Ubuntu 컨테이너 내부(Linux 환경)에서 성공적으로 재검증하였습니다.
 
@@ -133,6 +151,44 @@ $ curl http://localhost:8080
 
 #### 접속 증명
 ![웹 서버 성공 화면](images/web-server-success.png)
+
+### 4.6 Docker 볼륨 영속성 검증
+Docker 볼륨을 생성하여 컨테이너가 삭제된 이후에도 데이터가 보존되는 것을 검증하였습니다.
+
+```bash
+# 1. 볼륨 생성
+docker volume create mydata
+
+# 2. 첫 번째 컨테이너 실행 및 데이터 쓰기
+docker run -d --name vol-test1 -v mydata:/data ubuntu sleep infinity
+docker exec vol-test1 bash -c "echo 'hello volume' > /data/hello.txt && cat /data/hello.txt"
+
+# 3. 첫 번째 컨테이너 삭제
+docker rm -f vol-test1
+
+# 4. 두 번째 컨테이너로 동일 볼륨 재연결 → 데이터 유지 확인
+docker run -d --name vol-test2 -v mydata:/data ubuntu sleep infinity
+docker exec vol-test2 bash -c "cat /data/hello.txt"
+# → "hello volume" 출력 = 볼륨 영속성 증명 완료
+```
+
+**① 볼륨 생성 (`docker volume create mydata`):**
+![볼륨 생성](images/11_volume_create.png)
+
+**② 첫 번째 컨테이너(vol-test1) 실행:**
+![vol-test1 실행](images/12_container1_write_data.png)
+
+**③ 볼륨에 데이터 쓰기 및 확인 (`hello volume` 출력):**
+![데이터 쓰기 확인](images/13_container1_output_check.png)
+
+**④ vol-test1 컨테이너 삭제:**
+![컨테이너 삭제](images/14_container1_remove.png)
+
+**⑤ 두 번째 컨테이너(vol-test2) 동일 볼륨으로 재연결:**
+![vol-test2 재연결](images/15_container2_reconnect.png)
+
+**⑥ 컨테이너 삭제 후에도 데이터 유지 확인 (영속성 증명):**
+![볼륨 영속성 성공](images/16_volume_persistence_success.png)
 
 ---
 
