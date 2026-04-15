@@ -152,8 +152,34 @@ $ curl http://localhost:8080
 #### 접속 증명
 ![웹 서버 성공 화면](images/web-server-success.png)
 
+### 4.5-1 바인드 마운트(Bind Mount) 실습
+호스트 디렉토리를 컨테이너에 직접 연결하여, **컨테이너를 재빌드하지 않고도 호스트 파일 변경이 즉시 반영**되는 것을 검증하였습니다.
+
+```bash
+# 바인드 마운트로 nginx 컨테이너 실행
+# (MSYS_NO_PATHCONV=1: Git Bash 경로 자동변환 방지)
+MSYS_NO_PATHCONV=1 docker run -d -p 8081:80 --name bind-test \
+  -v /c/Users/gram/codyssey/bind-test:/usr/share/nginx/html \
+  nginx:alpine
+
+# 변경 전 파일 설정
+echo '<h1>Before Change</h1>' > /c/Users/gram/codyssey/bind-test/index.html
+# → http://localhost:8081 접속 확인
+
+# 호스트 파일만 수정 (컨테이너 재시작 없음)
+echo '<h1>After Change!</h1>' > /c/Users/gram/codyssey/bind-test/index.html
+# → 브라우저 새로고침만으로 즉시 반영 확인
+```
+
+**변경 전 (Before Change) — localhost:8081 접속:**
+![바인드 마운트 변경 전](images/07_bind_mount_before.png)
+
+**변경 후 (After Change!) — 컨테이너 재시작 없이 즉시 반영:**
+![바인드 마운트 변경 후](images/08_bind_mount_after.png)
+
 ### 4.6 Docker 볼륨 영속성 검증
 Docker 볼륨을 생성하여 컨테이너가 삭제된 이후에도 데이터가 보존되는 것을 검증하였습니다.
+
 
 ```bash
 # 1. 볼륨 생성
