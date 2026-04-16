@@ -198,6 +198,263 @@ docker exec vol-test2 bash -c "cat /data/hello.txt"
 # → "hello volume" 출력 = 볼륨 영속성 증명 완료
 ```
 
+## 5. 핵심 개념 설명 및 설계 기준
+
+### 5.1 프로젝트 디렉토리 구조 설계
+
+```code
+codysseyworkstation-mission/
+├── Dockerfile                 # 커스텀 이미지 빌드 정의
+├── docker-compose.yml         # 전체 컨테이너 환경 설정 (재현 가능)
+├── index.html                 # 웹 서버 콘텐츠
+├── README.md                  # 프로젝트 전체 설명서
+├── mission_logs/              # 실습 과정 스크린샷 및 로그
+│   ├── 01_docker_version_check.png
+│   ├── 02_docker_info_detail.png
+│   └── ... (실습 기록)
+├── html/                      # 바인드 마운트용 호스트 디렉토리
+│   └── index.html
+└── config/                    # 설정 파일 (권한 설정 예시)
+    └── nginx.conf
+
+```
+구성 기준:
+디렉토리/파일	목적	선택 이유
+Dockerfile	이미지 빌드 방식 명확화	재현 가능성 + 버전 관리
+docker-compose.yml	포트/볼륨 설정 자동화	한 줄 명령어로 전체 환경 구성
+mission_logs/	실습 과정 기록	학습 경로 추적 + 검증 증거
+html/	바인드 마운트 소스	개발 중 즉시 반영 (Hot Reload)
+config/	설정 파일 관리	권한 설정 및 환경 설정 중앙화
+
+```yaml
+version: '3.8'
+
+services:
+  web:
+    image: my-nginx:1.0
+    container_name: nginx-server
+    ports:
+      - "8080:80"              # 호스트 포트 8080 → 컨테이너 포트 80
+    volumes:
+      - ./html:/usr/share/nginx/html    # 바인드 마운트 (개발용)
+      - web-logs:/var/log/nginx         # 명명된 볼륨 (로그 영속성)
+    environment:
+      - NGINX_HOST=localhost
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  web-logs:                    # Docker가 관리하는 명명된 볼륨
+
+networks:
+  app-network:
+    driver: bridge
+```
+재현 방법:
+
+```bash
+# 1. 프로젝트 디렉토리로 이동
+cd codysseyworkstation-mission
+
+# 2. 한 줄 명령어로 전체 환경 구성
+docker-compose up -d
+
+# 3. 서비스 상태 확인
+docker-compose ps
+
+# 4. 로그 확인
+docker-compose logs -f web
+
+# 5. 환경 종료
+docker-compose down
+```
+재현 가능성의 이점:
+✅ 다른 개발자도 동일한 환경 구성 가능
+✅ CI/CD 파이프라인에 통합 용이
+✅ 포트/볼륨 설정이 코드로 버전 관리됨
+✅ 환경 변수 변경 시 Dockerfile 재빌드 불필요
+
+5.3 이미지(Image) vs 컨테이너(Container) 개념 비교
+관점	이미지(Image)	컨테이너(Container)
+정의	애플리케이션 실행에 필요한 모든 것을 담은 템플릿	이미지를 기반으로 실행되는 격리된 프로세스
+빌드	Dockerfile → docker build 명령어로 생성	이미지를 docker run으로 실행하여 생성
+실행	실행 불가능 (설계도)	실행 가능한 프로세스
+변경	변경 후 docker build 재실행 필요	실행 중 파일 변경 가능 (휘발성)
+저장	로컬 또는 Docker Hub/레지스트리에 저장	컨테이너 삭제 시 데이터 소실 (볼륨 미사용 시)
+크기	수 MB ~ 수 GB (압축된 형태)	실행 중인 프로세스 (메모리 사용)
+실제 비유:
+
+```code
+이미지 = 건축 설계도
+컨테이너 = 설계도로 지은 실제 건물
+
+같은 설계도(이미지)로 여러 건물(컨테이너)을 지을 수 있습니다.
+```
+## 6. 포트 매핑과 네트워크 격리
+### 6.1 컨테이너 내부 포트로 직접 접속할 수 없는 이유
+문제 상황:
+```bash
+# ❌ 실패: 호스트에서 컨테이너 포트로 직접 접속 불가
+$ curl http://localhost:80
+curl: (7) Failed to connect to localhost port 80: Connection refused
+
+# ✅ 성공: 포트 매핑을 통한 접속
+$ curl http://localhost:8080
+<html>...</html>
+```
+원인 분석:
+원인	설명
+네트워크 격리	컨테이너는 독립된 네트워크 네임스페이스를 가짐
+호스트와 분리	호스트의 localhost와 컨테이너의 localhost는 다른 네트워크
+포트 매핑 필요	호스트 OS가 중개자 역할을 해야 함
+포트 매핑의 필요성:
+```bash
+# 포트 매핑 설정
+docker run -d -p 8080:80 my-nginx:1.0
+         ↑      ↑    ↑
+      옵션   호스트  컨테이너
+          포트   포트
+
+# 동작 원리:
+# 호스트:8080 → (Docker 중개) → 컨테이너:80
+```
+검증:
+```bash
+# 컨테이너 내부에서는 접속 가능
+$ docker exec <container-id> curl http://localhost:80
+# ✅ 성공
+
+# 호스트에서 직접 접속은 불가능
+$ curl http://localhost:80
+# ❌ 실패
+
+# 포트 매핑을 통해서만 접속 가능
+$ curl http://localhost:8080
+# ✅ 성공
+```
+## 7. 절대 경로 vs 상대 경로 선택 기준
+## 7.1 경로 선택 기준표
+상황	절대 경로	상대 경로	선택 이유
+docker run 명령어	✅ 권장	❌ 비권장	어디서 실행해도 동일한 위치 지정
+docker-compose.yml	❌ 비권장	✅ 권장	파일 위치 기준으로 자동 조정
+Dockerfile	❌ 비권장	✅ 권장	이미지 빌드 컨텍스트 기준
+자동화 스크립트	✅ 권장	❌ 비권장	스크립트 위치와 무관하게 동작
+프로젝트 이동	❌ 경로 변경 필요	✅ 자동 조정	프로젝트 폴더 이동 시 유리
+## 7.2 실제 예시:
+❌ 절대 경로 사용 (재현 어려움):
+```bash
+# Windows 절대 경로
+docker run -v /c/Users/gram/codyssey/bind-test:/usr/share/nginx/html nginx
+
+# 문제점:
+# - 다른 사용자는 경로 변경 필요
+# - 다른 PC에서는 경로가 다름
+# - 재현 불가능
+```
+✅ 상대 경로 사용 (docker-compose.yml에서):
+```yaml
+version: '3.8'
+services:
+  web:
+    image: nginx:alpine
+    volumes:
+      - ./html:/usr/share/nginx/html  # 프로젝트 폴더 기준
+      - ./config:/etc/nginx/conf.d    # 자동으로 조정됨
+```
+실행 결과:
+```bash
+# 프로젝트 폴더 구조
+codysseyworkstation-mission/
+├── docker-compose.yml
+├── html/
+│   └── index.html
+└── config/
+    └── nginx.conf
+
+# 어디서 실행하든 동일하게 작동
+$ cd /d/codyssey/codysseyworkstation-mission
+$ docker-compose up -d
+# ✅ ./html → /d/codyssey/codysseyworkstation-mission/html로 자동 해석
+```
+## 8. 파일 권한 숫자 표기 규칙
+### 8.1 권한 숫자 규칙 (3자리 = 소유자/그룹/기타)
+```code
+chmod 755 = rwxr-xr-x
+       ↓
+    7 5 5
+    ↓ ↓ ↓
+    소 그 기
+    유 룹 타
+    자
+```
+권한 값 계산:
+기호	값	의미
+r (read)	4	읽기 권한
+w (write)	2	쓰기 권한
+x (execute)	1	실행 권한
+조합 예시:
+숫자	계산	권한	의미
+7	4+2+1	rwx	읽기 + 쓰기 + 실행
+6	4+2	rw-	읽기 + 쓰기
+5	4+1	r-x	읽기 + 실행
+4	4	r--	읽기만
+0	0	---	권한 없음
+## 8.2 실제 적용 사례:
+```bash
+# 755 = rwxr-xr-x (실행 가능한 스크립트)
+chmod 755 script.sh
+ls -l script.sh
+# -rwxr-xr-x  script.sh
+# 소유자: 읽기+쓰기+실행 / 그룹: 읽기+실행 / 기타: 읽기+실행
+
+# 644 = rw-r--r-- (읽기만 가능한 설정 파일)
+chmod 644 config.txt
+ls -l config.txt
+# -rw-r--r--  config.txt
+# 소유자: 읽기+쓰기 / 그룹: 읽기만 / 기타: 읽기만
+
+# 700 = rwx------ (소유자만 접근 가능)
+chmod 700 private/
+ls -ld private/
+# drwx------  private/
+# 소유자: 읽기+쓰기+실행 / 그룹: 권한없음 / 기타: 권한없음
+```
+### 8.3 권한 설정 가이드:
+파일 유형	권한	설명
+실행 스크립트	755	소유자는 모든 권한, 타인은 읽기+실행만
+일반 파일	644	소유자는 읽기+쓰기, 타인은 읽기만
+설정 파일	600	소유자만 읽기+쓰기 (보안)
+디렉토리	755	소유자는 모든 권한, 타인은 읽기+실행만
+개인 디렉토리	700	소유자만 접근 가능
+## 9. 포트 충돌 진단 및 해결
+### 9.1 "호스트 포트가 이미 사용 중" 진단 순서
+1단계: 포트 사용 상태 확인
+```bash
+# Windows 환경
+netstat -ano | findstr :8080
+# TCP    0.0.0.0:8080    0.0.0.0:0    LISTENING    12345
+
+# Mac/Linux 환경
+lsof -i :8080
+# COMMAND   PID USER   FD  TYPE DEVICE SIZE/OFF NODE NAME
+# nginx   12345 root    6u  IPv4  0x123      0t0  TCP *:8080 (LISTEN)
+```
+2단계: Docker 컨테이너 확인
+```bash
+# 실행 중인 모든 컨테이너 확인
+docker ps -a
+
+# 특정 포트를 사용하는 컨테이너 찾기
+docker ps --format "table {{.Names}}\t{{.Ports}}"
+# NAMES           PORTS
+# nginx-server    0.0.0.0:8080->80/tcp
+```
+3단계: 포트 변경 또는 기존 컨테이너
+
+
+### 5.2 docker-compose.yml을 통한 재현 가능한 설정
+
 **① 볼륨 생성 (`docker volume create mydata`):**
 ![볼륨 생성](images/11_volume_create.png)
 
